@@ -1,0 +1,8 @@
+en:
+  ricer4:
+    plugins:
+      tcp:
+        
+        tcp_add:
+          trigger: "tcp.add"
+          description: "Add a TCP/IP Listener server."
