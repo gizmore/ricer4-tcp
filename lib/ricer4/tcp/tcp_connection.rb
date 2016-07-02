@@ -34,6 +34,7 @@ module Ricer4::Plugins::Tcp
         rescue IOError
           bot.log.info("TCP Client #{@ip} disconnected.")
           @socket = nil
+          close
         ensure
           xlin_logout
         end
@@ -75,7 +76,11 @@ module Ricer4::Plugins::Tcp
       else
         xlin, username, password = *msg.split(' ')
         if (xlin && (xlin.downcase == 'xlin')) && username && password
-          @user = xlin_login(username, password, message)
+          begin
+            @user = xlin_login(username, password, message)
+          rescue => e
+            write(e.message)
+          end
         else
           write('401: XLIN username password MISSING - You are not logged in.')
         end
@@ -85,7 +90,7 @@ module Ricer4::Plugins::Tcp
     def xlin_logout
       bot.log.debug("NCSocket#xlin_logout")
       if @user
-        user_quit_server(@server, @user)
+        user_quit_server(@user)
         @user.remove_instance_variable(:@ricer_netcat_socket)
         @user.logout!
         @user = nil
@@ -117,13 +122,14 @@ module Ricer4::Plugins::Tcp
       created = false
       user = get_user(@server, nickname)
       if user.nil?
-        byebug
         user = create_user(@server, nickname)
         user.permissions = Ricer4::Permission::AUTHENTICATED.bit
         user.password = password
         write('200: REGISTERED!')
+      elsif xlin_auth(user, password)
+        user_joined_server(user)
       else
-        return nil unless xlin_auth(user, password)
+        return nil
       end
       
       @user = user
